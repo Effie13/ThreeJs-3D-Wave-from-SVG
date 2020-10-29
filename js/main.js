@@ -149,7 +149,7 @@
 		
 		var manager = new SVGLoader();
 			
-		manager.load( './assets/particle-shape.svg', initWave,
+		manager.load( '../assets/particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
