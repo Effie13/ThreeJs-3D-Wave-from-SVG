@@ -110,7 +110,7 @@
 				} );
 				var geometry = new THREE.CircleBufferGeometry( 2, 12 , 12);
 				
-        var layerMesh, path, shape;
+        			var layerMesh, path, shape;
 				for ( var i = 0; i < paths.length; i++ ) {
 					layerMesh = new THREE.Group();
 					path = paths[ i ];
@@ -149,7 +149,7 @@
 		
 		var manager = new SVGLoader();
 			
-		manager.load( '../assets/particle-shape.svg', initWave,
+		manager.load( '../particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
