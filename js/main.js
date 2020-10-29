@@ -3,7 +3,7 @@
 		const canvas = document.getElementById('wave');
 		
 		const renderer = new THREE.WebGLRenderer({canvas , antialias: true, powerPreference: "high-performance", alpha: true });
-		var hero = document.querySelector('.hero-bg.inner'), width = hero.offsetWidth , height = hero.offsetHeight , fov = 1000; // Field of view
+		var hero = document.querySelector('.hero'), width = hero.offsetWidth , height = hero.offsetHeight , fov = 1000; // Field of view
 		renderer.setSize(width, height);
 		const camera = new THREE.PerspectiveCamera( fov , width / height , 0.1 , 5000); // fov, aspect, near, far
 		camera.position.set( 0,0, -550);
@@ -25,7 +25,7 @@
 		
 		// Orbit Controls
 		var angle = Math.PI * 0.5;
-		const controls = new OrbitControls(camera,canvas);
+		const controls = new THREE.OrbitControls(camera,canvas);
 		controls.maxDistance = 900;
 		controls.minDistance = 0;
 		controls.maxAzimuthAngle = Math.PI * 2;
@@ -223,9 +223,9 @@
 					console.log('InstancedBufferGeometry count: '+ combinedGeometry.instanceCount );
           return combinedGeometry;
     }
-		var manager = new SVGLoader();
+		var manager = new THREE.SVGLoader();
 			
-		manager.load( '../particle-shape.svg', initWave,
+		manager.load( './particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
