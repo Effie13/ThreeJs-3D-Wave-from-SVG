@@ -30,12 +30,12 @@
 		const renderer = new THREE.WebGLRenderer({canvas , antialias: true, powerPreference: "high-performance", alpha: true });
 		var hero = document.querySelector('.hero-bg.inner'), width = hero.offsetWidth , height = hero.offsetHeight , fov = 10000; // Field of view
 		renderer.setSize(width, height);
-		const camera = new THREE.PerspectiveCamera( fov , width / height , 0.1 , 40000); // fov, aspect, near, far
-		camera.position.set( 0,100, -850);
+		const camera = new THREE.PerspectiveCamera( fov , width / height , 0.1 , 1000); // fov, aspect, near, far
+		camera.position.set( 0,100, -550);
 
 		const scene = new THREE.Scene();
 
-		//scene.fog = new THREE.Fog( 0xf88032, -100, 500);
+		scene.fog = new THREE.Fog( 0xf36523, 500, 900);
 		scene.add(camera);
 		
 		// Light
@@ -51,12 +51,12 @@
 		// Orbit Controls
 		var angle = Math.PI * 0.5;
 		const controls = new OrbitControls(camera,canvas);
-		controls.maxDistance = 1000;
+		controls.maxDistance = 700;
 		controls.minDistance = 300;
-		controls.maxAzimuthAngle = Math.PI * (1.5);
-		controls.minAzimuthAngle = Math.PI * (0.5);
-		/*controls.maxPolarAngle = Math.PI * (-1);
-		controls.minPolarAngle = Math.PI * (-2);*/
+		controls.maxAzimuthAngle = Math.PI * (1.2);
+		controls.minAzimuthAngle = Math.PI * (0.8);
+		controls.maxPolarAngle = Math.PI * 0.7;
+		controls.minPolarAngle = Math.PI * 0.4;
 			
 		controls.target.set(0, 0, 0);
 		controls.rotateSpeed = 0.15;
@@ -90,24 +90,83 @@
 			}
 			return needResize;
 		}
+		var material = new THREE.MeshLambertMaterial( {
+			color: 0x943e12,
+			side: THREE.BackSide, 
+			flatShading: false,
+			emissive: 0xa93a06
+		} );
+		var geometry = new THREE.CircleBufferGeometry( 2, 12 , 12);
+		var layers = [], i , mesh = new THREE.InstancedMesh(), totalS = 0 , pseudoE = new THREE.Object3D();
+		
+		var initWave = function(data){
+			var paths = data.paths;
+				
+				
+				var path, shape , i2 = 0, maxX = 0 , maxY = 0; // Only one variable declared
+				i = 0;
+				while ( i < paths.length){
+					
+					path = paths[i];
+					if( path.subPaths.length > 2 ){
+						
+						for ( var j = 0; j < path.subPaths.length; j++ ){
+							shape = path.subPaths[j];
+							totalS++;
+							if ( shape.currentPoint.x > maxX )
+								maxX = shape.currentPoint.x ;
+							if ( shape.currentPoint.y > maxY )
+								maxY = shape.currentPoint.y ;
+							layers.push([shape.currentPoint.x, shape.currentPoint.y , i2 * 2.5]);
+						}				
+						i2++;
+					}
+					i++;
+				}
+				mesh = new THREE.InstancedMesh( geometry, material, totalS );
+    			scene.add( mesh );
+				for (i = 0; i < totalS; i++) {
+				//console.log(layers[i]);
+				  pseudoE.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
+				  pseudoE.updateMatrix();
+				  mesh.setMatrixAt( i, pseudoE.matrix );
+				  mesh.updateMatrix();
+				};
+				mesh.position.x = maxX * (-0.5);
+				mesh.position.y = maxY * (-0.5);
+				mesh.updateMatrixWorld();
+				mesh.needsUpdate = true;
+				camera.lookAt(mesh);
+				camera.up = new THREE.Vector3(0, 1, 0);
+
+				canvas.classList.add('fadeIn');
+				requestAnimFrame(render);
+		}
+		
+		var manager = new SVGLoader();
+			
+		manager.load( './assets/particle-shape.svg', initWave,
+		function(xhr){
+			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+		},
+		function(err){
+			console.log('An error occured: ' + err.message + ' At line: '+ err.lineNumber);
+		});
 		
 		// Render
 		
-		let renderRequested = false;
+		let renderRequested = false , x , z , y;
 		
 		function render(time){
+			//console.log('In render');
+			time *= 0.002;
 			renderRequested = undefined;
-			
-			//time *= 0.001;  // convert to seconds
-
+				//console.log(time);
 			if (resizeRendererToDisplaySize(renderer)) {
 				const canvas = renderer.domElement;
 				camera.aspect = canvas.clientWidth / canvas.clientHeight;
 				camera.updateProjectionMatrix();
 			}
-			/*for ( var i = 0; i <= zIndexArray.length; i += 2){
-				console.log(zIndexArray[i]);
-			}*/
 			controls.update();
 			renderer.render(scene, camera);
 			//requestAnimFrame(render);
@@ -122,74 +181,6 @@
 		
 		controls.addEventListener('change', requestRenderIfNotRequested);
 		window.addEventListener('resize', requestRenderIfNotRequested);
-		var layers = [];
-		var initWave = function(data){
-			var paths = data.paths;
-				var material = new THREE.MeshLambertMaterial( {
-					color: 0x943e12,
-					side: THREE.DoubleSide, 
-					flatShading: false,
-					emissive: 0xa93a06
-				} );
-				var geometry = new THREE.CircleBufferGeometry( 3, 12 , 12);
-				
-				var path, shape, mesh, i = 0 , i2 = 0, totalS = 0 , maxX = 0 , maxY = 0; // Only one variable declared
-				while ( i < paths.length){
-					
-					path = paths[i];
-					if( path.subPaths.length > 2 ){
-						
-						for ( var j = 0; j < path.subPaths.length; j++ ){
-							shape = path.subPaths[j];
-							totalS++;
-							if ( shape.currentPoint.x > maxX )
-								maxX = shape.currentPoint.x ;
-							if ( shape.currentPoint.y > maxY )
-								maxY = shape.currentPoint.y ;
-							layers.push([shape.currentPoint.x, shape.currentPoint.y , i2 * 2]);
-						}				
-						i2++;
-					}
-					i++;
-				}
-				var mesh = new THREE.InstancedMesh( geometry, material, totalS );
-    			scene.add( mesh );
-				var pseudoE = new THREE.Object3D();
-				for (i = 0; i < totalS; i++) {
-				//console.log(layers[i]);
-				  pseudoE.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
-				  pseudoE.updateMatrix();
-				  mesh.setMatrixAt( i ++, pseudoE.matrix );
-				};
-				mesh.frustumCulled = true;
-				mesh.position.x = maxX * (-0.5);
-				mesh.position.y = maxY * (-0.5);
-				//new THREE.Box3().setFromObject( mesh ).getCenter( mesh.position ).multiplyScalar( - 1 );
-				mesh.updateMatrixWorld();
-				mesh.needsUpdate = true;
-				camera.lookAt(mesh);
-				camera.up = new THREE.Vector3(0, 1, 0);
-				console.log(mesh);
-
-				/*var helper = new THREE.BoxHelper(mesh, 0xffffff);
-				helper.update();
-				scene.add(helper);*/
-				
-				console.log(scene);
-				render();
-				canvas.classList.add('fadeIn');
-				//requestAnimFrame(render);
-		}
-		
-		var manager = new SVGLoader();
-			
-		manager.load( './assets/particle-shape.svg', initWave,
-		function(xhr){
-			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-		},
-		function(err){
-			console.log('An error occured: ' + err.message);
-		});
 	
 	})();
 	
