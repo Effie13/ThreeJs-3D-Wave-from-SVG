@@ -28,14 +28,14 @@
 		const canvas = document.getElementById('wave');
 		
 		const renderer = new THREE.WebGLRenderer({canvas , antialias: true, powerPreference: "high-performance", alpha: true });
-		var hero = document.querySelector('.hero-bg.inner'), width = hero.offsetWidth , height = hero.offsetHeight , fov = 10000; // Field of view
+		var hero = document.querySelector('.hero'), width = hero.offsetWidth , height = hero.offsetHeight , fov = 10000; // Field of view
 		renderer.setSize(width, height);
 		const camera = new THREE.PerspectiveCamera( fov , width / height , 0.1 , 1000); // fov, aspect, near, far
 		camera.position.set( 0,100, -550);
 
 		const scene = new THREE.Scene();
 
-		scene.fog = new THREE.Fog( 0xf36523, 500, 900);
+		scene.fog = new THREE.Fog( 0xf36523, 450, 800);
 		scene.add(camera);
 		
 		// Light
@@ -51,23 +51,24 @@
 		// Orbit Controls
 		var angle = Math.PI * 0.5;
 		const controls = new OrbitControls(camera,canvas);
-		controls.maxDistance = 700;
-		controls.minDistance = 300;
-		controls.maxAzimuthAngle = Math.PI * (1.2);
-		controls.minAzimuthAngle = Math.PI * (0.8);
-		controls.maxPolarAngle = Math.PI * 0.7;
-		controls.minPolarAngle = Math.PI * 0.4;
+		//controls.maxDistance = 700;
+		//controls.minDistance = 300;
+		controls.maxAzimuthAngle = Math.PI * (1.03);
+		controls.minAzimuthAngle = Math.PI * (0.97);
+		controls.maxPolarAngle = Math.PI * 0.55;
+		controls.minPolarAngle = Math.PI * 0.45;
 			
 		controls.target.set(0, 0, 0);
-		controls.rotateSpeed = 0.15;
-		controls.zoomSpeed = 0.5;
+		controls.rotateSpeed = 0.1;
+		//controls.zoomSpeed = 0.5;
+		controls.enableZoom = false;
 		controls.enableDamping = true;
 		
 		controls.update();	
 
 		// Helper Functions 
-		var axesHelper = new THREE.AxesHelper( 10 );
-		scene.add( axesHelper );
+		/*var axesHelper = new THREE.AxesHelper( 1000000 );
+		scene.add( axesHelper ); */
 		
 		window.requestAnimFrame = (function(){
 			return  window.requestAnimationFrame || 
@@ -96,20 +97,20 @@
 			flatShading: false,
 			emissive: 0xa93a06
 		} );
-		var geometry = new THREE.CircleBufferGeometry( 2, 12 , 12);
-		var layers = [], i , mesh = new THREE.InstancedMesh(), totalS = 0 , pseudoE = new THREE.Object3D();
+		var geometry = new THREE.CircleBufferGeometry( 2, 10 , 10);
+		var layers = [], i , mesh = new THREE.InstancedMesh(), maxX = 0 , maxY = 0 , totalS = 0 , dummy = new THREE.Object3D(), mat4 = new THREE.Matrix4();
 		
 		var initWave = function(data){
 			var paths = data.paths;
 				
 				
-				var path, shape , i2 = 0, maxX = 0 , maxY = 0; // Only one variable declared
+				var path, shape , i2 = 0; // Only one variable declared
 				i = 0;
 				while ( i < paths.length){
 					
 					path = paths[i];
 					if( path.subPaths.length > 2 ){
-						
+						//console.log(path.subPaths.length);
 						for ( var j = 0; j < path.subPaths.length; j++ ){
 							shape = path.subPaths[j];
 							totalS++;
@@ -124,28 +125,33 @@
 					i++;
 				}
 				mesh = new THREE.InstancedMesh( geometry, material, totalS );
+				mesh.matrixAutoUpdate = false;
     			scene.add( mesh );
 				for (i = 0; i < totalS; i++) {
-				//console.log(layers[i]);
-				  pseudoE.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
-				  pseudoE.updateMatrix();
-				  mesh.setMatrixAt( i, pseudoE.matrix );
-				  mesh.updateMatrix();
+					// Center wave vertically 
+					layers[i][1] += maxY * (-0.5);
+					dummy.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
+					dummy.updateMatrix();
+					mesh.setMatrixAt( i, dummy.matrix );
+					mesh.updateMatrix();
 				};
+				// Update Instances
+				mesh.instanceMatrix.needsUpdate = true;
+				// Center horizontally and update mesh matrix
 				mesh.position.x = maxX * (-0.5);
-				mesh.position.y = maxY * (-0.5);
-				mesh.updateMatrixWorld();
-				mesh.needsUpdate = true;
-				camera.lookAt(mesh);
+				mesh.updateMatrix();
+				console.log(mesh);
+				camera.lookAt(maxX * 0.5, maxY * 0.5, 0);
 				camera.up = new THREE.Vector3(0, 1, 0);
 
 				canvas.classList.add('fadeIn');
+				render();
 				requestAnimFrame(render);
 		}
 		
 		var manager = new SVGLoader();
 			
-		manager.load( './assets/particle-shape.svg', initWave,
+		manager.load( 'particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
@@ -155,23 +161,42 @@
 		
 		// Render
 		
-		let renderRequested = false , x , z , y;
+		let renderRequested = false , d;
 		
 		function render(time){
-			//console.log('In render');
-			time *= 0.002;
+
+			time *= 0.0000015;
 			renderRequested = undefined;
-				//console.log(time);
+
 			if (resizeRendererToDisplaySize(renderer)) {
 				const canvas = renderer.domElement;
 				camera.aspect = canvas.clientWidth / canvas.clientHeight;
 				camera.updateProjectionMatrix();
 			}
+			console.log( 'Time: ' + time);
+			if ( time > 0.0015 ){
+				
+				for (i = 0; i < totalS; i++) {
+					mesh.getMatrixAt(i, mat4);
+					mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+					d = Math.hypot( dummy.position.x, dummy.position.z );
+					dummy.position.y = Math.sin(time * d) * layers[i][1];
+					dummy.updateMatrix();
+					mesh.setMatrixAt(i, dummy.matrix);
+					mesh.updateMatrix();
+				}
+				mesh.instanceMatrix.needsUpdate = true;
+			}
+			
 			controls.update();
 			renderer.render(scene, camera);
-			//requestAnimFrame(render);
+			
+			if ( time < 0.007){
+				// Here the frequency is getting to big
+				// Want to change DOMHighResTimeStamp 
+				requestAnimFrame(render);
+			}
 		}
-		
 		function requestRenderIfNotRequested() {
 		  if (!renderRequested) {
 			renderRequested = true;
