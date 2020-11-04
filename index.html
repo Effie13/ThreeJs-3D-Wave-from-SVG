@@ -51,8 +51,6 @@
 		// Orbit Controls
 		var angle = Math.PI * 0.5;
 		const controls = new OrbitControls(camera,canvas);
-		//controls.maxDistance = 700;
-		//controls.minDistance = 300;
 		controls.maxAzimuthAngle = Math.PI * (1.03);
 		controls.minAzimuthAngle = Math.PI * (0.97);
 		controls.maxPolarAngle = Math.PI * 0.55;
@@ -140,7 +138,6 @@
 			// Center horizontally and update mesh matrix
 			mesh.position.x = maxX * (-0.5);
 			mesh.updateMatrix();
-			//console.log(mesh);
 			camera.lookAt(maxX * 0.5, maxY * 0.5, 0);
 			controls.enabled = false;
 			controls.update();
@@ -152,7 +149,7 @@
 		
 		var manager = new SVGLoader();
 			
-		manager.load( './assets/particle-shape.svg', initWave,
+		manager.load( './particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
@@ -162,10 +159,12 @@
 		
 		// Render
 		
-		let renderRequested = false;
-		
+		let renderRequested = false , startTime = performance.now(), t, changed = false;
+
 		function render(time){
-			time *= 0.0000015;
+			t = (performance.now() - startTime) * 0.0000015;
+			//time *= 0.0000015;
+			
 			renderRequested = undefined;
 
 			if (resizeRendererToDisplaySize(renderer)) {
@@ -173,23 +172,35 @@
 				camera.aspect = canvas.clientWidth / canvas.clientHeight;
 				camera.updateProjectionMatrix();
 			}
-			console.log( 'Time: ' + time);
-			if ( time > 0.0008 ){
+			//console.log('Time : ' + t);
+			if ( t > 0.0008 ){
 				
 				for (i = 0; i < totalS; i++) {
 					mesh.getMatrixAt(i, mat4);
 					mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
-					dummy.position.y = Math.sin(time * layers[i][3]) * layers[i][1];
+					if(changed){
+						layers[i][1] = dummy.position.y;
+						dummy.position.y *= Math.sin( t * layers[i][3]);
+					}else{
+						dummy.position.y = Math.sin( t * layers[i][3]) * layers[i][1];
+					}
 					dummy.updateMatrix();
 					mesh.setMatrixAt(i, dummy.matrix);
 					mesh.updateMatrix();
 				}
+				if(changed){
+					changed = false;
+				}
 				mesh.instanceMatrix.needsUpdate = true;
 			}
 			renderer.render(scene, camera);
-			if ( time < 0.0075){
-				requestAnimFrame(render);
+			if ( t > 0.0075){
+				startTime = performance.now();
+				changed = true;
 			}
+			if ( t < 0.0075 ){
+				requestAnimFrame(render);
+			}	
 		}
 		function requestRenderIfNotRequested() {
 		  if (!renderRequested) {
