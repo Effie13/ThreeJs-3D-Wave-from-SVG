@@ -23,7 +23,6 @@
     	import {SVGLoader} from 'https://unpkg.com/three@0.122.0/examples/jsm/loaders/SVGLoader.js';
     	import {BufferGeometryUtils} from 'https://unpkg.com/three@0.122.0/examples/jsm/utils/BufferGeometryUtils.js';
 	
-	// Main
 	!(function main() {
 		const canvas = document.getElementById('wave');
 		
@@ -99,6 +98,8 @@
 		var geometry = new THREE.CircleBufferGeometry( 2, 10 , 10);
 		var layers = [], i , mesh = new THREE.InstancedMesh(), maxX = 0 , maxY = 0 , totalS = 0 , dummy = new THREE.Object3D(), mat4 = new THREE.Matrix4();
 		
+		var manager = new SVGLoader();
+		
 		var initWave = function(data){
 			var paths = data.paths;
 			var path, shape , i2 = 0, x,y,z; // Only one variable declared
@@ -147,8 +148,6 @@
 			requestAnimFrame(render);
 		}
 		
-		var manager = new SVGLoader();
-			
 		manager.load( './particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
@@ -157,13 +156,16 @@
 			console.log('An error occured: ' + err.message + ' At line: '+ err.lineNumber);
 		});
 		
+		
+		
 		// Render
 		
-		let renderRequested = false , startTime = performance.now(), t, changed = false;
+		let renderRequested = false , startTime = performance.now(), t, changed = false, originalT;
 
 		function render(time){
-			t = (performance.now() - startTime) * 0.0000015;
-			//time *= 0.0000015;
+			//t = (performance.now() - startTime) * 0.00000015;
+			originalT = time * 0.00005
+			time *= 0.0000005; // even slower
 			
 			renderRequested = undefined;
 
@@ -173,7 +175,7 @@
 				camera.updateProjectionMatrix();
 			}
 			//console.log('Time : ' + t);
-			if ( t > 0.0008 ){
+			if ( time > 0.00008 ){
 				
 				for (i = 0; i < totalS; i++) {
 					mesh.getMatrixAt(i, mat4);
@@ -182,7 +184,7 @@
 						layers[i][1] = dummy.position.y;
 						dummy.position.y *= Math.sin( t * layers[i][3]);
 					}else{
-						dummy.position.y = Math.sin( t * layers[i][3]) * layers[i][1];
+						dummy.position.y = layers[i][1] /* = A */ * Math.sin( layers[i][3] * time)/* + (layers[i][1] / 4 * Math.abs(Math.cos(originalT)) + layers[i][1] / 4)*/ ; // carrier wave 
 					}
 					dummy.updateMatrix();
 					mesh.setMatrixAt(i, dummy.matrix);
@@ -194,11 +196,11 @@
 				mesh.instanceMatrix.needsUpdate = true;
 			}
 			renderer.render(scene, camera);
-			if ( t > 0.0075){
+			/*if ( t > 0.0065){
 				startTime = performance.now();
 				changed = true;
-			}
-			if ( t < 0.0075 ){
+			}*/
+			if ( time < 0.007 ){
 				requestAnimFrame(render);
 			}	
 		}
