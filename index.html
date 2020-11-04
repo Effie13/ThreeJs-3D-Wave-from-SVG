@@ -57,7 +57,8 @@
 		controls.minAzimuthAngle = Math.PI * (0.97);
 		controls.maxPolarAngle = Math.PI * 0.55;
 		controls.minPolarAngle = Math.PI * 0.45;
-			
+		controls.enablePan = false;
+		//controls.enabled = false;
 		controls.target.set(0, 0, 0);
 		controls.rotateSpeed = 0.1;
 		//controls.zoomSpeed = 0.5;
@@ -102,56 +103,56 @@
 		
 		var initWave = function(data){
 			var paths = data.paths;
-				
-				
-				var path, shape , i2 = 0; // Only one variable declared
-				i = 0;
-				while ( i < paths.length){
-					
-					path = paths[i];
-					if( path.subPaths.length > 2 ){
-						//console.log(path.subPaths.length);
-						for ( var j = 0; j < path.subPaths.length; j++ ){
-							shape = path.subPaths[j];
-							totalS++;
-							if ( shape.currentPoint.x > maxX )
-								maxX = shape.currentPoint.x ;
-							if ( shape.currentPoint.y > maxY )
-								maxY = shape.currentPoint.y ;
-							layers.push([shape.currentPoint.x, shape.currentPoint.y , i2 * 2.5]);
-						}				
-						i2++;
-					}
-					i++;
+			var path, shape , i2 = 0, x,y,z; // Only one variable declared
+			i = 0;
+			while ( i < paths.length){
+				path = paths[i];
+				if( path.subPaths.length > 2 ){
+					for ( var j = 0; j < path.subPaths.length; j++ ){
+						shape = path.subPaths[j];
+						totalS++;
+						x = shape.currentPoint.x;
+						y = shape.currentPoint.y;
+						z = i2 * 2.5;
+						if ( x > maxX )
+							maxX = x ;
+						if ( y > maxY )
+							maxY = y ;
+						layers.push([x, y , z, Math.hypot( x, z)] );
+					}				
+					i2++;
 				}
-				mesh = new THREE.InstancedMesh( geometry, material, totalS );
-				mesh.matrixAutoUpdate = false;
-    			scene.add( mesh );
-				for (i = 0; i < totalS; i++) {
-					// Center wave vertically 
-					layers[i][1] += maxY * (-0.5);
-					dummy.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
-					dummy.updateMatrix();
-					mesh.setMatrixAt( i, dummy.matrix );
-					mesh.updateMatrix();
-				};
-				// Update Instances
-				mesh.instanceMatrix.needsUpdate = true;
-				// Center horizontally and update mesh matrix
-				mesh.position.x = maxX * (-0.5);
+				i++;
+			}
+			mesh = new THREE.InstancedMesh( geometry, material, totalS );
+			mesh.matrixAutoUpdate = false;
+    		scene.add( mesh );
+			for (i = 0; i < totalS; i++) {
+				// Center wave vertically 
+				layers[i][1] += maxY * (-0.5);
+				dummy.position.set( layers[i][0] , layers[i][1], layers[i][2]) ;
+				dummy.updateMatrix();
+				mesh.setMatrixAt( i, dummy.matrix );
 				mesh.updateMatrix();
-				console.log(mesh);
-				camera.lookAt(maxX * 0.5, maxY * 0.5, 0);
-				camera.up = new THREE.Vector3(0, 1, 0);
-
-				canvas.classList.add('fadeIn');
-				render();
-				requestAnimFrame(render);
+			};
+			// Update Instances
+			mesh.instanceMatrix.needsUpdate = true;
+			// Center horizontally and update mesh matrix
+			mesh.position.x = maxX * (-0.5);
+			mesh.updateMatrix();
+			//console.log(mesh);
+			camera.lookAt(maxX * 0.5, maxY * 0.5, 0);
+			controls.enabled = false;
+			controls.update();
+			camera.up = new THREE.Vector3(0, 1, 0);
+			canvas.classList.add('fadeIn');
+			render();
+			requestAnimFrame(render);
 		}
 		
 		var manager = new SVGLoader();
 			
-		manager.load( 'particle-shape.svg', initWave,
+		manager.load( './assets/particle-shape.svg', initWave,
 		function(xhr){
 			console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 		},
@@ -161,10 +162,9 @@
 		
 		// Render
 		
-		let renderRequested = false , d;
+		let renderRequested = false;
 		
 		function render(time){
-
 			time *= 0.0000015;
 			renderRequested = undefined;
 
@@ -174,26 +174,20 @@
 				camera.updateProjectionMatrix();
 			}
 			console.log( 'Time: ' + time);
-			if ( time > 0.0015 ){
+			if ( time > 0.0008 ){
 				
 				for (i = 0; i < totalS; i++) {
 					mesh.getMatrixAt(i, mat4);
 					mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
-					d = Math.hypot( dummy.position.x, dummy.position.z );
-					dummy.position.y = Math.sin(time * d) * layers[i][1];
+					dummy.position.y = Math.sin(time * layers[i][3]) * layers[i][1];
 					dummy.updateMatrix();
 					mesh.setMatrixAt(i, dummy.matrix);
 					mesh.updateMatrix();
 				}
 				mesh.instanceMatrix.needsUpdate = true;
 			}
-			
-			controls.update();
 			renderer.render(scene, camera);
-			
-			if ( time < 0.007){
-				// Here the frequency is getting to big
-				// Want to change DOMHighResTimeStamp 
+			if ( time < 0.0075){
 				requestAnimFrame(render);
 			}
 		}
