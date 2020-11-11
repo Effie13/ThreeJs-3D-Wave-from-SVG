@@ -7,4 +7,4 @@ Contains working code but not optimized. Renders slowly. It simply loads the SVG
 
 Instance Optimization:
 
-First attempt to optimize the objects by merging geometries.
+First attempt to optimize the objects using InstancedMesh(). Working example but not yet perfect. 
